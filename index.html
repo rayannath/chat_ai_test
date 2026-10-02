@@ -270,9 +270,9 @@
         // LIST OF ACTIVE GEMINI MODELS FOR AUTOMATIC FALLBACK
         const GEMINI_MODELS = [
             'gemini-2.5-flash',
-            'gemini-1.5-flash',
-            'gemini-2.0-flash',
-            'gemini-2.5-pro'
+            'gemini-3-flash-preview',
+            'gemini-3.1-pro-preview',
+            'gemini-1.5-flash'
         ];
 
         let state = {
@@ -517,18 +517,20 @@
                     const apiErrMsg = errBody.error?.message || `HTTP status ${response.status}`;
                     lastErrorDetails = `Model (${modelName}): ${apiErrMsg}`;
 
-                    if (response.status === 400 || response.status === 401 || response.status === 403) {
+                    if (response.status === 401 || response.status === 403) {
                         openApiKeyModal();
                         throw new Error(`API Key tidak valid atau tidak diizinkan (${apiErrMsg}). Silakan periksa kembali API Key kamu di Google AI Studio.`);
                     } else if (response.status === 429) {
-                        throw new Error("Batas kuota gratis (Rate Limit) terlampaui. Tunggu beberapa detik sebelum mengirim pesan lagi.");
+                        console.warn(`Rate limit pada model ${modelName}, mencoba model berikutnya...`);
+                    } else {
+                        console.warn(`Gagal pada model ${modelName}: ${apiErrMsg}`);
                     }
                 } catch (err) {
-                    if (err.message.includes("API Key tidak valid") || err.message.includes("Rate Limit")) {
+                    if (err.message.includes("API Key tidak valid")) {
                         throw err;
                     }
                     if (err.name === 'TypeError') {
-                        throw new Error("Gagal terhubung ke server Google. Pastikan koneksi internet lancar dan disajikan melalui HTTPS/Live Server.");
+                        throw new Error("Gagal terhubung ke server Google. Pastikan koneksi internet lancar.");
                     }
                 }
             }
