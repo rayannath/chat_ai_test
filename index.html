@@ -436,23 +436,27 @@
             try {
                 const responseText = await executeGeminiApiCall(text);
                 
-                // Pecah teks berdasarkan pemisah ||| atau baris baru berulang
-                let parts = responseText.split('|||').map(p => p.trim()).filter(p => p.length > 0);
+                // Pecah teks berdasarkan pemisah ||| DAN baris baru (\n) agar TIDAK ADA enter dalam satu bubble
+                let rawParts = responseText.split('|||');
+                let parts = [];
                 
-                // Jika AI tidak memakai |||, coba pecah berdasarkan pemisah dua enter (\n\n) jika ada
-                if (parts.length === 1 && responseText.includes('\n\n')) {
-                    const lineParts = responseText.split(/\n\n+/).map(p => p.trim()).filter(p => p.length > 0);
-                    if (lineParts.length > 1 && lineParts.length <= 4) {
-                        parts = lineParts;
-                    }
+                rawParts.forEach(p => {
+                    // Setiap ada baris baru (enter), jadikan bubble terpisah
+                    const lines = p.split(/\r?\n+/).map(l => l.trim()).filter(l => l.length > 0);
+                    parts.push(...lines);
+                });
+
+                // Fallback jika tidak ada hasil pecahan
+                if (parts.length === 0 && responseText.trim()) {
+                    parts = [responseText.trim()];
                 }
 
                 // Tampilkan tiap gelembung pesan satu per satu dengan simulasi mengetik
                 for (let i = 0; i < parts.length; i++) {
                     if (i > 0) {
                         setHeaderTyping(true);
-                        // Hitung jeda ngetik alami berdasarkan panjang teks (800ms - 2200ms)
-                        const delay = Math.min(Math.max(parts[i].length * 35, 800), 2200);
+                        // Hitung jeda ngetik alami berdasarkan panjang teks (600ms - 1800ms)
+                        const delay = Math.min(Math.max(parts[i].length * 30, 600), 1800);
                         await new Promise(resolve => setTimeout(resolve, delay));
                     }
 
@@ -507,8 +511,8 @@
                 });
             });
 
-            // Tambahkan instruksi pemisahan gelembung chat (|||) ke System Prompt
-            const multiBubbleInstruction = "\n\n[PENTING CARA BALAS WA]: Balaslah seperti orang asli di WhatsApp. Bagi pesanmu menjadi 2 hingga 4 gelembung chat terpisah yang singkat dengan menggunakan pembatas '|||' di antara setiap pesan (contoh: 'Halo bro!|||Lagi ngapain?|||Btw kemarin gimana agendanya?'). Jangan kirim satu paragraf panjang dalam satu pesan.";
+            // Tambahkan instruksi pemisahan gelembung chat yang sangat tegas ke System Prompt
+            const multiBubbleInstruction = "\n\n[ATURAN PENTING FORMAT WHATSAPP]:\n1. Kamu WAJIB membagi balasanmu menjadi 2 hingga 4 gelembung chat terpisah yang singkat.\n2. Pisahkan setiap gelembung pesan dengan simbol '|||' atau gunakan Enter (baris baru).\n3. JANGAN PERNAH mengirimkan teks panjang yang memiliki Enter di dalam satu pesan. Setiap kalimat/bagian harus menjadi gelembung pesan tersendiri.";
 
             const payload = {
                 contents: contents,
