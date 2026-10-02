@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WhatsApp Web - Gemini AI</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        wa: {
+                            darkTeal: '#075e54',
+                            teal: '#128c7e',
+                            green: '#25d366',
+                            lightGreen: '#d9fdd3',
+                            bgPattern: '#efeae2',
+                            bgDark: '#0b141a',
+                            bubbleUser: '#d9fdd3',
+                            bubbleAi: '#ffffff',
+                            bubbleUserDark: '#005c4b',
+                            bubbleAiDark: '#202c33',
+                            headerDark: '#111b21',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Segoe UI', 'Helvetica Neue', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+        .chat-pattern {
+            background-color: #efeae2;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 18px 18px;
+        }
+        .dark .chat-pattern {
+            background-color: #0b141a;
+            background-image: radial-gradient(#1e293b 1px, transparent 1px);
+            background-size: 18px 18px;
+        }
+    </style>
+</head>
+<body class="bg-gray-200 dark:bg-gray-950 font-sans antialiased h-screen flex flex-col justify-center items-center overflow-hidden">
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="app" class="w-full h-full max-w-5xl md:h-[96vh] md:rounded-2xl md:shadow-2xl overflow-hidden flex flex-col bg-white dark:bg-wa-headerDark relative border border-gray-300 dark:border-gray-800">
+        
+        <!-- HEADER BAR -->
+        <header class="bg-wa-darkTeal dark:bg-wa-headerDark text-white px-3 py-2.5 flex items-center justify-between shadow-md z-10 shrink-0 border-b border-wa-teal/20">
+            <div class="flex items-center space-x-3 cursor-pointer" id="headerProfileBtn" title="Klik untuk edit profil kontak">
+                <div class="relative">
+                    <img id="headerAvatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" alt="Avatar" class="w-10 h-10 rounded-full object-cover border border-white/20">
+                    <span id="headerOnlineDot" class="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-wa-darkTeal rounded-full"></span>
+                </div>
+                <div class="flex flex-col justify-center">
+                    <h2 id="headerName" class="font-semibold text-base leading-tight">Sarah (Teman Gaul)</h2>
+                    <span id="headerStatus" class="text-xs text-emerald-100 dark:text-emerald-300 transition-all duration-300">online</span>
+                </div>
+            </div>
+
+            <!-- Header Action Icons -->
+            <div class="flex items-center space-x-3 md:space-x-4 text-emerald-100 text-lg">
+                <button id="apiKeyModalBtn" title="Pengaturan Gemini API Key" class="hover:text-white bg-wa-teal/40 hover:bg-wa-teal px-2.5 py-1 rounded-lg text-xs flex items-center gap-1.5 transition">
+                    <i class="fas fa-key text-yellow-300"></i>
+                    <span id="apiKeyStatusBadge" class="hidden md:inline font-medium">API Key</span>
+                </button>
+                <button title="Panggilan Suara" onclick="showNotification('Simulasi: Layanan suara tidak aktif dalam mode teks.')" class="hover:text-white transition p-1"><i class="fas fa-phone"></i></button>
+                <button id="settingsBtn" title="Pengaturan Persona & Kontak" class="hover:text-white transition p-1"><i class="fas fa-sliders"></i></button>
+            </div>
+        </header>
+
+        <!-- API KEY MISSING WARNING BANNER -->
+        <div id="apiKeyBanner" class="hidden bg-amber-500/10 border-b border-amber-500/30 text-amber-800 dark:text-amber-200 px-4 py-2 text-xs flex items-center justify-between z-10">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-triangle-exclamation text-amber-500 text-sm"></i>
+                <span>Gemini API Key belum dimasukkan. Masukkan API Key gratis kamu agar AI bisa membalas.</span>
+            </div>
+            <button id="openApiKeyBannerBtn" class="bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded text-xs font-semibold shadow transition">
+                Set API Key
+            </button>
+        </div>
+
+        <!-- CHAT BODY AREA -->
+        <main id="chatContainer" class="flex-1 overflow-y-auto p-4 chat-pattern space-y-3 relative">
+            <!-- Messages dynamically generated -->
+        </main>
+
+        <!-- INPUT BAR AREA -->
+        <footer class="bg-gray-100 dark:bg-wa-headerDark px-3 py-2.5 flex items-center space-x-2 border-t border-gray-200 dark:border-gray-800 shrink-0">
+            <button id="clearChatBtn" title="Bersihkan Percakapan" class="text-gray-500 hover:text-red-500 dark:text-gray-400 transition p-2 text-lg">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+            
+            <div class="flex-1 bg-white dark:bg-gray-800 rounded-2xl flex items-center px-4 py-2 shadow-sm border border-gray-200 dark:border-gray-700">
+                <textarea id="messageInput" rows="1" placeholder="Ketik pesan..." class="w-full bg-transparent focus:outline-none resize-none text-sm text-gray-800 dark:text-gray-100 max-h-24"></textarea>
+            </div>
+
+            <button id="sendBtn" class="bg-wa-teal hover:bg-wa-darkTeal text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md transition-transform active:scale-95 shrink-0">
+                <i class="fas fa-paper-plane text-sm"></i>
+            </button>
+        </footer>
+
+        <!-- API KEY SETTINGS MODAL -->
+        <div id="apiKeyModal" class="hidden absolute inset-0 bg-black/70 z-40 flex justify-center items-center p-4 backdrop-blur-sm transition-opacity">
+            <div class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md p-6 shadow-2xl border border-gray-200 dark:border-gray-800">
+                <div class="flex justify-between items-center pb-3 border-b border-gray-200 dark:border-gray-800 mb-4">
+                    <h3 class="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-key text-yellow-500"></i> Pengaturan Gemini API Key
+                    </h3>
+                    <button id="closeApiKeyModalBtn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <i class="fas fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4 text-xs text-gray-600 dark:text-gray-300">
+                    <div class="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-lg border border-blue-200 dark:border-blue-900/50">
+                        <p class="font-semibold text-blue-800 dark:text-blue-300 mb-1">💡 Cara Mendapatkan API Key Gratis:</p>
+                        <ol class="list-decimal list-inside space-y-1 text-blue-700 dark:text-blue-400">
+                            <li>Buka <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline font-bold hover:text-blue-900">Google AI Studio <i class="fas fa-external-link-alt text-[10px]"></i></a></li>
+                            <li>Login dengan akun Google kamu.</li>
+                            <li>Klik tombol <strong>"Create API Key"</strong>.</li>
+                            <li>Salin API key lalu tempelkan pada kolom di bawah ini.</li>
+                        </ol>
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Gemini API Key</label>
+                        <input type="password" id="inputApiKeyModal" class="w-full text-sm p-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-wa-teal focus:outline-none" placeholder="AIzaSy...">
+                    </div>
+
+                    <div class="pt-2 flex justify-between items-center">
+                        <button type="button" id="removeApiKeyBtn" class="text-red-500 hover:underline font-medium text-xs">Hapus Key</button>
+                        <div class="flex space-x-2">
+                            <button type="button" id="cancelApiKeyModalBtn" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">Batal</button>
+                            <button type="button" id="saveApiKeyModalBtn" class="px-5 py-2 bg-wa-teal hover:bg-wa-darkTeal text-white rounded-lg font-medium shadow transition">Simpan API Key</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PERSONA SETTINGS MODAL -->
+        <div id="settingsModal" class="hidden absolute inset-0 bg-black/70 z-30 flex justify-center items-center p-4 backdrop-blur-sm transition-opacity">
+            <div class="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md p-6 shadow-2xl border border-gray-200 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center pb-3 border-b border-gray-200 dark:border-gray-800 mb-4">
+                    <h3 class="text-base font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-user-gear text-wa-teal"></i> Pengaturan Kontak & AI Persona
+                    </h3>
+                    <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <i class="fas fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <form id="settingsForm" class="space-y-4">
+                    <!-- Preset Selection -->
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pilih Preset Persona</label>
+                        <select id="presetSelect" class="w-full text-sm p-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-wa-teal focus:outline-none">
+                            <option value="custom">-- Kustom Persona --</option>
+                            <option value="sahabat">Teman Gaul / Sahabat</option>
+                            <option value="mantan">Mantan Pacar (Agak Gengsi)</option>
+                            <option value="pacar">Pacar Posesif & Manja</option>
+                            <option value="dosen">Dosen Pembimbing Skripsi</option>
+                            <option value="bos">Bos Kantor Perfeksionis</option>
+                        </select>
+                    </div>
+
+                    <!-- Contact Name -->
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Nama Kontak WhatsApp</label>
+                        <input type="text" id="inputContactName" class="w-full text-sm p-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-wa-teal focus:outline-none" placeholder="Contoh: Sarah">
+                    </div>
+
+                    <!-- Avatar URL -->
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">URL foto profil avatar</label>
+                        <input type="url" id="inputAvatarUrl" class="w-full text-sm p-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-wa-teal focus:outline-none" placeholder="https://...">
+                    </div>
+
+                    <!-- System Prompt -->
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Instruksi Karakter AI (System Prompt)</label>
+                        <textarea id="inputSystemPrompt" rows="3" class="w-full text-sm p-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-wa-teal focus:outline-none resize-none" placeholder="Instruksi karakter AI..."></textarea>
+                    </div>
+
+                    <div class="pt-2 flex justify-end space-x-2">
+                        <button type="button" id="cancelModalBtn" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg">Batal</button>
+                        <button type="submit" class="px-5 py-2 text-sm bg-wa-teal hover:bg-wa-darkTeal text-white rounded-lg font-medium shadow transition">Simpan Kontak</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div id="toast" class="hidden absolute top-16 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-4 py-2 rounded-full shadow-lg z-50 transition-all opacity-0">
+            <span id="toastMsg">Notifikasi</span>
+        </div>
+    </div>
+
+    <script>
+        // PRESET PERSONA CONFIGURATIONS
+        const PRESETS = {
+            sahabat: {
+                name: "Sarah (Teman Gaul)",
+                avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+                prompt: "Kamu adalah Sarah, teman akrab sejak SMA. Gunakan bahasa gaul Indonesia (gw, lu, anjir, wkwk, santai). Balaslah pesan seperti chatan WhatsApp biasa: singkat, luwes, kadang tanpa tanda baca baku, dan suportif."
+            },
+            mantan: {
+                name: "Rian (Mantan)",
+                avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
+                prompt: "Kamu adalah mantan pacar yang agak gengsi tapi sebenarnya masih penasaran. Suka ketus di awal tapi gampang tersentuh. Jawab singkat-singkat seperti pesan WhatsApp."
+            },
+            pacar: {
+                name: "Kania ❤️",
+                avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100&auto=format&fit=crop&q=80",
+                prompt: "Kamu adalah Kania, pacar yang sangat perhatian, sedikit manja, dan suka kepo. Selalu pakai panggilan sayang (bebeb/sayang) dan minta kabar secara berkala."
+            },
+            dosen: {
+                name: "Pak Budi (Dosen Skripsi)",
+                avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80",
+                prompt: "Kamu adalah Pak Budi, Dosen Pembimbing Skripsi. Singkat, formal, agak kaku, selalu menanyakan progres bab/revisi dan footnote. Gunakan bahasa baku."
+            },
+            bos: {
+                name: "Pak Hendra (Bos Kantor)",
+                avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&auto=format&fit=crop&q=80",
+                prompt: "Kamu adalah Pak Hendra, atasan langsung di kantor. Sangat profesional, to-the-point, berfokus pada deadline, dan efisien dalam berkirim pesan."
+            }
+        };
+
+        // LIST OF GEMINI MODELS FOR AUTOMATIC FALLBACK
+        const GEMINI_MODELS = [
+            'gemini-2.5-flash',
+            'gemini-1.5-flash',
+            'gemini-2.0-flash',
+            'gemini-1.5-pro'
+        ];
+
+        // GLOBAL STATE MANAGEMENT
+        let state = {
+            apiKey: localStorage.getItem('wa_gemini_key') || '',
+            contactName: localStorage.getItem('wa_ai_name') || PRESETS.sahabat.name,
+            avatarUrl: localStorage.getItem('wa_ai_avatar') || PRESETS.sahabat.avatar,
+            systemPrompt: localStorage.getItem('wa_ai_prompt') || PRESETS.sahabat.prompt,
+            messages: JSON.parse(localStorage.getItem('wa_ai_chats')) || [
+                {
+                    id: 1,
+                    sender: 'ai',
+                    text: 'Halo! Ada cerita apa hari ini? Chat gw aja ya! 😄',
+                    time: getCurrentTime()
+                }
+            ]
+        };
+
+        // DOM ELEMENTS
+        const chatContainer = document.getElementById('chatContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const headerName = document.getElementById('headerName');
+        const headerAvatar = document.getElementById('headerAvatar');
+        const headerStatus = document.getElementById('headerStatus');
+        const apiKeyBanner = document.getElementById('apiKeyBanner');
+        const apiKeyStatusBadge = document.getElementById('apiKeyStatusBadge');
+        
+        const apiKeyModal = document.getElementById('apiKeyModal');
+        const apiKeyModalBtn = document.getElementById('apiKeyModalBtn');
+        const openApiKeyBannerBtn = document.getElementById('openApiKeyBannerBtn');
+        const closeApiKeyModalBtn = document.getElementById('closeApiKeyModalBtn');
+        const cancelApiKeyModalBtn = document.getElementById('cancelApiKeyModalBtn');
+        const saveApiKeyModalBtn = document.getElementById('saveApiKeyModalBtn');
+        const removeApiKeyBtn = document.getElementById('removeApiKeyBtn');
+        const inputApiKeyModal = document.getElementById('inputApiKeyModal');
+
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const headerProfileBtn = document.getElementById('headerProfileBtn');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const cancelModalBtn = document.getElementById('cancelModalBtn');
+        const settingsForm = document.getElementById('settingsForm');
+        
+        const presetSelect = document.getElementById('presetSelect');
+        const inputContactName = document.getElementById('inputContactName');
+        const inputAvatarUrl = document.getElementById('inputAvatarUrl');
+        const inputSystemPrompt = document.getElementById('inputSystemPrompt');
+        const clearChatBtn = document.getElementById('clearChatBtn');
+
+        // INITIALIZATION
+        function init() {
+            checkApiKeyStatus();
+            renderHeader();
+            renderMessages();
+            setupEventListeners();
+        }
+
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        function checkApiKeyStatus() {
+            if (!state.apiKey) {
+                apiKeyBanner.classList.remove('hidden');
+                apiKeyStatusBadge.textContent = 'Set API Key';
+            } else {
+                apiKeyBanner.classList.add('hidden');
+                apiKeyStatusBadge.textContent = 'Key Active';
+            }
+        }
+
+        function renderHeader() {
+            headerName.textContent = state.contactName;
+            headerAvatar.src = state.avatarUrl;
+        }
+
+        function renderMessages() {
+            chatContainer.innerHTML = '';
+            
+            state.messages.forEach(msg => {
+                const bubbleWrapper = document.createElement('div');
+                bubbleWrapper.className = `flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`;
+
+                if (msg.sender === 'user') {
+                    bubbleWrapper.innerHTML = `
+                        <div class="bg-wa-bubbleUser dark:bg-wa-bubbleUserDark text-gray-900 dark:text-gray-100 px-3 py-2 rounded-xl rounded-tr-none max-w-[85%] md:max-w-[70%] shadow-sm text-sm my-0.5">
+                            <p class="whitespace-pre-wrap leading-relaxed">${escapeHTML(msg.text)}</p>
+                            <div class="flex items-center justify-end space-x-1 mt-1 text-[10px] text-gray-500 dark:text-gray-400">
+                                <span>${msg.time}</span>
+                                <i class="fas fa-check-double text-blue-500"></i>
+                            </div>
+                        </div>
+                    `;
+                } else if (msg.sender === 'system-error') {
+                    bubbleWrapper.innerHTML = `
+                        <div class="w-full flex justify-center my-2">
+                            <div class="bg-red-100 dark:bg-red-950/80 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 text-xs px-3 py-2 rounded-lg max-w-[90%] text-center shadow-sm">
+                                <i class="fas fa-circle-exclamation mr-1"></i> ${escapeHTML(msg.text)}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    bubbleWrapper.innerHTML = `
+                        <div class="bg-wa-bubbleAi dark:bg-wa-bubbleAiDark text-gray-900 dark:text-gray-100 px-3 py-2 rounded-xl rounded-tl-none max-w-[85%] md:max-w-[70%] shadow-sm text-sm my-0.5">
+                            <p class="whitespace-pre-wrap leading-relaxed">${escapeHTML(msg.text)}</p>
+                            <div class="flex items-center justify-end space-x-1 mt-1 text-[10px] text-gray-400">
+                                <span>${msg.time}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                chatContainer.appendChild(bubbleWrapper);
+            });
+
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        async function handleSendMessage() {
+            const text = messageInput.value.trim();
+            if (!text) return;
+
+            if (!state.apiKey) {
+                openApiKeyModal();
+                showNotification("Masukkan Gemini API Key terlebih dahulu!");
+                return;
+            }
+
+            // Push User Message
+            const userMsg = {
+                id: Date.now(),
+                sender: 'user',
+                text: text,
+                time: getCurrentTime()
+            };
+
+            state.messages.push(userMsg);
+            saveToLocalStorage();
+            renderMessages();
+
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+
+            setHeaderTyping(true);
+
+            // Execute Gemini Request with Model Fallbacks
+            try {
+                const responseText = await executeGeminiApiCall(text);
+                
+                const aiMsg = {
+                    id: Date.now() + 1,
+                    sender: 'ai',
+                    text: responseText,
+                    time: getCurrentTime()
+                };
+
+                state.messages.push(aiMsg);
+            } catch (err) {
+                // Display error message in chat area
+                const errorMsg = {
+                    id: Date.now() + 1,
+                    sender: 'system-error',
+                    text: err.message || "Gagal terhubung ke Gemini API.",
+                    time: getCurrentTime()
+                };
+                state.messages.push(errorMsg);
+            } finally {
+                setHeaderTyping(false);
+                saveToLocalStorage();
+                renderMessages();
+            }
+        }
+
+        function setHeaderTyping(isTyping) {
+            if (isTyping) {
+                headerStatus.textContent = 'sedang mengetik...';
+                headerStatus.className = 'text-xs text-yellow-300 font-medium animate-pulse';
+            } else {
+                headerStatus.textContent = 'online';
+                headerStatus.className = 'text-xs text-emerald-100 dark:text-emerald-300';
+            }
+        }
+
+        async function executeGeminiApiCall(userPrompt) {
+            const contents = [];
+
+            // Build payload context from past chat history
+            state.messages.filter(m => m.sender === 'user' || m.sender === 'ai').slice(-10).forEach(msg => {
+                contents.push({
+                    role: msg.sender === 'user' ? 'user' : 'model',
+                    parts: [{ text: msg.text }]
+                });
+            });
+
+            const payload = {
+                contents: contents,
+                systemInstruction: {
+                    parts: [{ text: state.systemPrompt }]
+                }
+            };
+
+            let lastError = null;
+
+            // Iterate over fallback models in sequence
+            for (const modelName of GEMINI_MODELS) {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${state.apiKey}`;
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (generatedText) return generatedText;
+                    }
+
+                    // Handle specific HTTP Status Codes
+                    if (response.status === 400 || response.status === 401 || response.status === 403) {
+                        openApiKeyModal();
+                        throw new Error("API Key tidak valid atau tidak diizinkan. Silakan periksa kembali Gemini API Key kamu.");
+                    } else if (response.status === 429) {
+                        throw new Error("Batas kuota gratis (Rate Limit) Gemini terlampaui. Mohon tunggu sejenak sebelum mengirim pesan lagi.");
+                    } else if (response.status === 404) {
+                        // Model version unavailable, fall through to next model
+                        continue;
+                    } else {
+                        const errBody = await response.json().catch(() => ({}));
+                        throw new Error(errBody.error?.message || `Server error (${response.status}).`);
+                    }
+                } catch (err) {
+                    lastError = err;
+                    // If network/CORS error
+                    if (err.name === 'TypeError') {
+                        throw new Error("Gagal terhubung ke server Google. Pastikan koneksi internet lancar & tidak terhalang VPN/Adblocker.");
+                    }
+                    if (err.message.includes("API Key tidak valid") || err.message.includes("Rate Limit")) {
+                        throw err;
+                    }
+                }
+            }
+
+            throw lastError || new Error("Tidak dapat terhubung ke Gemini API setelah mencoba beberapa model.");
+        }
+
+        // LOCAL STORAGE HELPERS
+        function saveToLocalStorage() {
+            localStorage.setItem('wa_ai_chats', JSON.stringify(state.messages));
+            localStorage.setItem('wa_gemini_key', state.apiKey);
+            localStorage.setItem('wa_ai_name', state.contactName);
+            localStorage.setItem('wa_ai_avatar', state.avatarUrl);
+            localStorage.setItem('wa_ai_prompt', state.systemPrompt);
+        }
+
+        function showNotification(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            toastMsg.textContent = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.remove('opacity-0'), 10);
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 3000);
+        }
+
+        function openApiKeyModal() {
+            inputApiKeyModal.value = state.apiKey;
+            apiKeyModal.classList.remove('hidden');
+        }
+
+        function closeApiKeyModal() {
+            apiKeyModal.classList.add('hidden');
+        }
+
+        function setupEventListeners() {
+            sendBtn.addEventListener('click', handleSendMessage);
+
+            messageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                }
+            });
+
+            messageInput.addEventListener('input', () => {
+                messageInput.style.height = 'auto';
+                messageInput.style.height = (messageInput.scrollHeight) + 'px';
+            });
+
+            // API Key Modal Controls
+            apiKeyModalBtn.addEventListener('click', openApiKeyModal);
+            openApiKeyBannerBtn.addEventListener('click', openApiKeyModal);
+            closeApiKeyModalBtn.addEventListener('click', closeApiKeyModal);
+            cancelApiKeyModalBtn.addEventListener('click', closeApiKeyModal);
+
+            saveApiKeyModalBtn.addEventListener('click', () => {
+                const key = inputApiKeyModal.value.trim();
+                state.apiKey = key;
+                saveToLocalStorage();
+                checkApiKeyStatus();
+                closeApiKeyModal();
+                showNotification(key ? "API Key berhasil disimpan!" : "API Key dikosongkan.");
+            });
+
+            removeApiKeyBtn.addEventListener('click', () => {
+                state.apiKey = '';
+                inputApiKeyModal.value = '';
+                saveToLocalStorage();
+                checkApiKeyStatus();
+                closeApiKeyModal();
+                showNotification("API Key telah dihapus.");
+            });
+
+            // Persona Modal Controls
+            const openSettingsModal = () => {
+                inputContactName.value = state.contactName;
+                inputAvatarUrl.value = state.avatarUrl;
+                inputSystemPrompt.value = state.systemPrompt;
+                settingsModal.classList.remove('hidden');
+            };
+
+            settingsBtn.addEventListener('click', openSettingsModal);
+            headerProfileBtn.addEventListener('click', openSettingsModal);
+
+            const closeSettingsModal = () => settingsModal.classList.add('hidden');
+            closeModalBtn.addEventListener('click', closeSettingsModal);
+            cancelModalBtn.addEventListener('click', closeSettingsModal);
+
+            presetSelect.addEventListener('change', (e) => {
+                const key = e.target.value;
+                if (key !== 'custom' && PRESETS[key]) {
+                    inputContactName.value = PRESETS[key].name;
+                    inputAvatarUrl.value = PRESETS[key].avatar;
+                    inputSystemPrompt.value = PRESETS[key].prompt;
+                }
+            });
+
+            settingsForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                state.contactName = inputContactName.value.trim() || 'Seseorang';
+                state.avatarUrl = inputAvatarUrl.value.trim() || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100';
+                state.systemPrompt = inputSystemPrompt.value.trim() || PRESETS.sahabat.prompt;
+
+                saveToLocalStorage();
+                renderHeader();
+                closeSettingsModal();
+                showNotification('Profil kontak & AI berhasil diperbarui!');
+            });
+
+            clearChatBtn.addEventListener('click', () => {
+                if (confirm('Bersihkan seluruh pesan dalam percakapan ini?')) {
+                    state.messages = [
+                        {
+                            id: Date.now(),
+                            sender: 'ai',
+                            text: 'Pesan dibersihkan. Yuk mulai ngobrol lagi!',
+                            time: getCurrentTime()
+                        }
+                    ];
+                    saveToLocalStorage();
+                    renderMessages();
+                    showNotification('Riwayat pesan telah dihapus.');
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
